@@ -52,7 +52,11 @@ function toItemInventario(id: string, lojaId: string, data: Record<string, unkno
  * definida em @prumo/core.
  */
 export class FirestoreInventoryRepository implements InventoryRepository {
-  constructor(private readonly db: Firestore) {}
+  private readonly db: Firestore
+
+  constructor(db: Firestore) {
+    this.db = db
+  }
 
   async listItems(lojaId: string, filtro?: FiltroItens): Promise<ItemInventario[]> {
     const ref = collection(this.db, itensCollectionPath(lojaId))
