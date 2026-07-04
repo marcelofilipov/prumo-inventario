@@ -1,0 +1,55 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function membroDaLoja(lojaId) {
+      return autenticado() &&
+        exists(/databases/$(database)/documents/lojas/$(lojaId)/membros/$(request.auth.uid));
+    }
+
+    function papelDoMembro(lojaId) {
+      return get(/databases/$(database)/documents/lojas/$(lojaId)/membros/$(request.auth.uid)).data.papel;
+    }
+
+    function podeEditar(lojaId) {
+      return membroDaLoja(lojaId) && papelDoMembro(lojaId) in ['admin', 'editor'];
+    }
+
+    function ehAdmin(lojaId) {
+      return membroDaLoja(lojaId) && papelDoMembro(lojaId) == 'admin';
+    }
+
+    // Nega tudo por padrão; cada coleção abaixo libera explicitamente.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /lojas/{lojaId} {
+      allow read: if membroDaLoja(lojaId);
+      allow write: if ehAdmin(lojaId);
+
+      match /membros/{uid} {
+        allow read: if membroDaLoja(lojaId);
+        allow write: if ehAdmin(lojaId);
+      }
+
+      match /itens/{itemId} {
+        allow read: if membroDaLoja(lojaId);
+        allow create, update, delete: if podeEditar(lojaId);
+
+        match /historico/{eventoId} {
+          allow read: if membroDaLoja(lojaId);
+          // Histórico é gravado só via regra de auditoria (não editável/deletável
+          // diretamente pelo cliente); criação liberada para quem pode editar itens.
+          allow create: if podeEditar(lojaId);
+          allow update, delete: if false;
+        }
+      }
+    }
+  }
+}

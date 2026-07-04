@@ -1,0 +1,21 @@
+{
+  "name": "@prumo/data",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --noEmit",
+    "lint": "echo \"(sem lint configurado ainda)\"",
+    "test": "echo \"(sem testes ainda)\""
+  },
+  "dependencies": {
+    "@prumo/core": "workspace:*",
+    "firebase": "^11.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

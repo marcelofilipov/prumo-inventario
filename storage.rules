@@ -1,0 +1,32 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function membroDaLoja(lojaId) {
+      return autenticado() &&
+        firestore.exists(/databases/(default)/documents/lojas/$(lojaId)/membros/$(request.auth.uid));
+    }
+
+    function podeEditar(lojaId) {
+      return membroDaLoja(lojaId) &&
+        firestore.get(/databases/(default)/documents/lojas/$(lojaId)/membros/$(request.auth.uid)).data.papel in ['admin', 'editor'];
+    }
+
+    // Nega tudo por padrão.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    match /lojas/{lojaId}/itens/{itemId}/{fileName} {
+      allow read: if membroDaLoja(lojaId);
+      allow write: if podeEditar(lojaId)
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+  }
+}
