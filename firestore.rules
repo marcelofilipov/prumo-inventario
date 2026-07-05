@@ -24,7 +24,38 @@ service cloud.firestore {
       return membroDaLoja(lojaId) && papelDoMembro(lojaId) == 'admin';
     }
 
-    // Nega tudo por padrão; cada coleção abaixo libera explicitamente.
+    // Validação de forma de um item. Espelha o schema zod (packages/core),
+    // agora aplicada no servidor: um cliente feito à mão (fora do app) não
+    // consegue gravar tipos errados, enum inválido ou lixo. Campos opcionais
+    // são validados só quando presentes. `dataAquisicao` pode ser null porque
+    // é assim que o app grava quando o campo é deixado em branco.
+    function itemValido(d, lojaId) {
+      return d.lojaId == lojaId
+        && d.descricao is string && d.descricao.size() > 0
+        && d.quantidade is int && d.quantidade > 0
+        && d.codigoLegado is string && d.codigoLegado.size() > 0
+        && d.categoria in ['acessibilidade_saude', 'mobiliario', 'cozinha',
+                           'comemorativo', 'ritualistico', 'eletronicos', 'outros']
+        && d.status in ['ativo', 'baixado', 'emprestado', 'manutencao']
+        && d.fotos is list
+        && d.criadoPor is string
+        && d.atualizadoPor is string
+        && d.criadoEm is timestamp
+        && d.atualizadoEm is timestamp
+        && (!('localizacao' in d) || d.localizacao is string)
+        && (!('observacao' in d) || d.observacao is string)
+        && (!('dataAquisicao' in d) || d.dataAquisicao == null || d.dataAquisicao is timestamp)
+        && (!('valorEstimado' in d) || (d.valorEstimado is number && d.valorEstimado >= 0));
+    }
+
+    function papelValido(papel) {
+      return papel in ['admin', 'editor', 'leitor'];
+    }
+
+    // Nega tudo por padrão. Observação: no Firestore as permissões se unem por
+    // OR — este bloco NÃO revoga o que os matches específicos concedem; a
+    // proteção real vem de caminhos não cobertos serem negados por padrão.
+    // Mantido como documentação explícita da postura deny-by-default.
     match /{document=**} {
       allow read, write: if false;
     }
@@ -35,18 +66,26 @@ service cloud.firestore {
 
       match /membros/{uid} {
         allow read: if membroDaLoja(lojaId);
-        allow write: if ehAdmin(lojaId);
+        // Só admin gerencia membros (sem auto-escalonamento) e o papel gravado
+        // precisa ser um dos papéis válidos.
+        allow create, update: if ehAdmin(lojaId) && papelValido(request.resource.data.papel);
+        allow delete: if ehAdmin(lojaId);
       }
 
       match /itens/{itemId} {
         allow read: if membroDaLoja(lojaId);
-        allow create, update, delete: if podeEditar(lojaId);
+        allow create, update: if podeEditar(lojaId) && itemValido(request.resource.data, lojaId);
+        allow delete: if podeEditar(lojaId);
 
         match /historico/{eventoId} {
           allow read: if membroDaLoja(lojaId);
-          // Histórico é gravado só via regra de auditoria (não editável/deletável
-          // diretamente pelo cliente); criação liberada para quem pode editar itens.
-          allow create: if podeEditar(lojaId);
+          // Auditoria à prova de adulteração: quem grava tem de ser o próprio
+          // autor (`usuario`), o instante é o do servidor (não pode ser
+          // pós-datado) e a ação é de um conjunto fechado. Imutável após criado.
+          allow create: if podeEditar(lojaId)
+            && request.resource.data.usuario == request.auth.uid
+            && request.resource.data.timestamp == request.time
+            && request.resource.data.acao in ['criacao', 'edicao', 'exclusao'];
           allow update, delete: if false;
         }
       }
