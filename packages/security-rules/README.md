@@ -29,6 +29,17 @@ Pré-requisitos: **Java 21+** (o emulador do Firestore roda em JVM e o
 Firebase CLI 15+ exige JDK 21 ou superior) e o **Firebase CLI**
 (`firebase-tools`), além do `pnpm install` já feito.
 
+> Garanta que tanto o `java` no PATH quanto o `JAVA_HOME` apontem para um
+> JDK 21+. Se você tem várias versões instaladas, defina no seu shell (ex.:
+> `~/.zshrc`):
+>
+> ```bash
+> export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+> ```
+>
+> Um `JAVA_HOME` apontando para um JDK antigo pode fazer o emulador falhar
+> com `Java version before 21`, mesmo que o `java` do PATH seja o 21.
+
 Na raiz do monorepo:
 
 ```bash
