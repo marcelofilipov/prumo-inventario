@@ -11,7 +11,8 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
-    "test": "turbo run test"
+    "test": "turbo run test",
+    "test:rules": "firebase emulators:exec --project demo-prumo --only firestore \"pnpm --filter @prumo/security-rules test:rules\""
   },
   "devDependencies": {
     "turbo": "^2.3.3",
