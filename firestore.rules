@@ -3,32 +3,40 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function autenticado() {
-      return request.auth != null;
+    // Autorização por DOCUMENTO (sem custom claims / sem Cloud Functions):
+    // o papel vem de lojas/{lojaId}/membros/{uid}. Membro com disabled==true
+    // perde o acesso. Escolha compatível com o plano Spark/free.
+    function meuMembro(lojaId) {
+      return get(/databases/$(database)/documents/lojas/$(lojaId)/membros/$(request.auth.uid)).data;
     }
 
-    function membroDaLoja(lojaId) {
-      return autenticado() &&
-        exists(/databases/$(database)/documents/lojas/$(lojaId)/membros/$(request.auth.uid));
+    function ehMembroAtivo(lojaId) {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/lojas/$(lojaId)/membros/$(request.auth.uid))
+        // .get() com default tolera docs legados sem o campo `disabled`.
+        && meuMembro(lojaId).get('disabled', false) != true;
     }
 
-    function papelDoMembro(lojaId) {
-      return get(/databases/$(database)/documents/lojas/$(lojaId)/membros/$(request.auth.uid)).data.papel;
+    function papel(lojaId) {
+      return ehMembroAtivo(lojaId) ? meuMembro(lojaId).papel : null;
     }
 
     function podeEditar(lojaId) {
-      return membroDaLoja(lojaId) && papelDoMembro(lojaId) in ['admin', 'editor'];
+      return papel(lojaId) in ['admin', 'editor'];
     }
 
     function ehAdmin(lojaId) {
-      return membroDaLoja(lojaId) && papelDoMembro(lojaId) == 'admin';
+      return papel(lojaId) == 'admin';
     }
 
-    // Validação de forma de um item. Espelha o schema zod (packages/core),
-    // agora aplicada no servidor: um cliente feito à mão (fora do app) não
-    // consegue gravar tipos errados, enum inválido ou lixo. Campos opcionais
-    // são validados só quando presentes. `dataAquisicao` pode ser null porque
-    // é assim que o app grava quando o campo é deixado em branco.
+    // Validação mínima de um membro: o campo sensível é o papel; os demais
+    // são de exibição. Lenient para não quebrar docs legados (só `papel`).
+    function membroValido(d) {
+      return d.papel in ['admin', 'editor', 'leitor']
+        && (!('disabled' in d) || d.disabled is bool);
+    }
+
+    // Validação de forma de um item (espelha o schema zod de packages/core).
     function itemValido(d, lojaId) {
       return d.lojaId == lojaId
         && d.descricao is string && d.descricao.size() > 0
@@ -48,40 +56,49 @@ service cloud.firestore {
         && (!('valorEstimado' in d) || (d.valorEstimado is number && d.valorEstimado >= 0));
     }
 
-    function papelValido(papel) {
-      return papel in ['admin', 'editor', 'leitor'];
-    }
-
-    // Nega tudo por padrão. Observação: no Firestore as permissões se unem por
-    // OR — este bloco NÃO revoga o que os matches específicos concedem; a
-    // proteção real vem de caminhos não cobertos serem negados por padrão.
-    // Mantido como documentação explícita da postura deny-by-default.
+    // Deny-by-default (documentação explícita; a proteção real vem de caminhos
+    // não cobertos serem negados).
     match /{document=**} {
       allow read, write: if false;
     }
 
     match /lojas/{lojaId} {
-      allow read: if membroDaLoja(lojaId);
+      allow read: if ehMembroAtivo(lojaId);
       allow write: if ehAdmin(lojaId);
 
+      // Gestão de membros feita pelo client (admin), protegida aqui.
       match /membros/{uid} {
-        allow read: if membroDaLoja(lojaId);
-        // Só admin gerencia membros (sem auto-escalonamento) e o papel gravado
-        // precisa ser um dos papéis válidos.
-        allow create, update: if ehAdmin(lojaId) && papelValido(request.resource.data.papel);
-        allow delete: if ehAdmin(lojaId);
+        allow read: if ehAdmin(lojaId) || (request.auth != null && request.auth.uid == uid);
+        allow create, update: if ehAdmin(lojaId) && membroValido(request.resource.data);
+        allow delete: if false; // desativação lógica, nunca exclusão
+      }
+
+      // Contadores de papéis: piso de admin >= 1 garantido aqui (backstop do
+      // "não remover o último admin", já que o client mantém o contador).
+      match /system/{docId} {
+        allow read: if ehAdmin(lojaId);
+        allow write: if ehAdmin(lojaId)
+          && request.resource.data.admin is int && request.resource.data.admin >= 1
+          && request.resource.data.editor is int && request.resource.data.editor >= 0;
+      }
+
+      // Auditoria: só admin lê e cria; autor = usuário autenticado; imutável.
+      match /auditLogs/{logId} {
+        allow read: if ehAdmin(lojaId);
+        allow create: if ehAdmin(lojaId)
+          && request.resource.data.changedBy == request.auth.uid
+          && request.resource.data.timestamp == request.time
+          && request.resource.data.action in ['create', 'update-role', 'disable', 'enable'];
+        allow update, delete: if false;
       }
 
       match /itens/{itemId} {
-        allow read: if membroDaLoja(lojaId);
+        allow read: if ehMembroAtivo(lojaId);
         allow create, update: if podeEditar(lojaId) && itemValido(request.resource.data, lojaId);
         allow delete: if podeEditar(lojaId);
 
         match /historico/{eventoId} {
-          allow read: if membroDaLoja(lojaId);
-          // Auditoria à prova de adulteração: quem grava tem de ser o próprio
-          // autor (`usuario`), o instante é o do servidor (não pode ser
-          // pós-datado) e a ação é de um conjunto fechado. Imutável após criado.
+          allow read: if ehMembroAtivo(lojaId);
           allow create: if podeEditar(lojaId)
             && request.resource.data.usuario == request.auth.uid
             && request.resource.data.timestamp == request.time

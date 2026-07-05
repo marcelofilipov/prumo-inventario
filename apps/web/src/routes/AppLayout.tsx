@@ -1,3 +1,4 @@
+import { podeGerenciarUsuarios } from '@prumo/core'
 import { signOutUser } from '@prumo/data'
 import { NavLink, Outlet } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
@@ -36,6 +37,7 @@ export function AppLayout() {
           </span>
           <NavItem to="/">Início</NavItem>
           <NavItem to="/itens">Itens</NavItem>
+          {podeGerenciarUsuarios(papel) && <NavItem to="/admin/usuarios">Usuários</NavItem>}
         </div>
         <div className="flex items-center gap-3">
           <div className="hidden items-center gap-2 sm:flex">
@@ -55,12 +57,9 @@ export function AppLayout() {
 
       {!papel && (
         <p className="bg-gold/20 px-4 py-3 text-sm text-gold-foreground sm:px-6 dark:bg-gold/10">
-          Seu login funcionou, mas você ainda não tem um papel atribuído nesta Loja. Peça a um
-          administrador para cadastrar seu usuário em{' '}
-          <code className="rounded bg-black/10 px-1 py-0.5 dark:bg-white/10">
-            lojas/{'{lojaId}'}/membros/{user?.uid}
-          </code>{' '}
-          no Firestore.
+          Seu login funcionou, mas você ainda não tem acesso a esta Loja. Peça a um administrador
+          para adicionar o seu usuário na tela <strong>Usuários</strong>. Se o seu papel mudou há
+          pouco, saia e entre novamente para atualizar o acesso.
         </p>
       )}
 

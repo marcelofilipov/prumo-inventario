@@ -8,3 +8,12 @@ import type { PapelUsuario } from './types'
 export function podeGerenciarItens(papel: PapelUsuario | null): boolean {
   return papel === 'admin' || papel === 'editor'
 }
+
+/**
+ * Só administradores gerenciam usuários/papéis. Espelha as regras de acesso a
+ * `membros`; a UI usa isto apenas para mostrar/esconder a tela de
+ * administração — a segurança real está nas regras do Firestore.
+ */
+export function podeGerenciarUsuarios(papel: PapelUsuario | null): boolean {
+  return papel === 'admin'
+}

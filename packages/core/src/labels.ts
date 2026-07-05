@@ -1,4 +1,10 @@
-import type { Categoria, StatusItem } from './types'
+import type { Categoria, PapelUsuario, StatusItem } from './types'
+
+export const ROLE_LABELS: Record<PapelUsuario, string> = {
+  admin: 'Administrador',
+  editor: 'Editor',
+  leitor: 'Leitor',
+}
 
 export const CATEGORIA_LABELS: Record<Categoria, string> = {
   acessibilidade_saude: 'Acessibilidade / Saúde',

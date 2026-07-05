@@ -13,8 +13,8 @@ responderia — permitindo ou negando conforme a regra.
 
 Os testes usam a biblioteca oficial `@firebase/rules-unit-testing`, que:
 
-- Cria "contextos" de usuário — autenticado com um `uid` (e, portanto, um
-  papel, conforme o membro semeado) ou anônimo.
+- Cria "contextos" de usuário — autenticado com um `uid` (o papel vem do
+  documento `membros/{uid}` semeado no cenário) ou anônimo.
 - Oferece `assertSucceeds(promise)` e `assertFails(promise)` para afirmar que
   uma operação foi **permitida** ou **negada** pelas regras.
 - Permite semear dados **ignorando as regras** (`withSecurityRulesDisabled`),
@@ -57,10 +57,14 @@ aberto em um terminal (`firebase emulators:start --only firestore`) e rode
 
 ## Cobertura atual
 
-- Leitura de itens: membro sim; não-membro, anônimo e outra loja não
-  (isolamento multi-tenant).
+- **Autorização por documento** `membros/{uid}` (papel + `disabled`).
+- Leitura de itens: membro ativo sim; desativado, sem doc e anônimo não.
 - Escrita de itens: papel (editor/admin) + validação de forma (tipos, enum de
   `status`/`categoria`, `lojaId` consistente, `dataAquisicao` null aceito).
-- Membros: só admin escreve, `papel` restrito ao enum, sem auto-escalonamento.
-- Histórico/auditoria: autor = usuário autenticado, timestamp do servidor,
+- Membros: leitura só para o próprio usuário ou admin; escrita só por admin
+  (papel validado); sem exclusão (desativação lógica).
+- `system/roleCounts`: leitura/escrita só admin, com piso `admin >= 1`.
+- `auditLogs`: leitura só admin; criação com autor = usuário autenticado;
+  imutável.
+- Histórico de itens: autor = usuário autenticado, timestamp do servidor,
   imutável após criado.
