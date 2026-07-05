@@ -1,16 +1,17 @@
+import { Route, Routes } from 'react-router-dom'
 import './App.css'
+import { HomePage } from './routes/HomePage'
+import { LoginPage } from './routes/LoginPage'
+import { ProtectedRoute } from './routes/ProtectedRoute'
 
 function App() {
   return (
-    <main style={{ maxWidth: 640, margin: '4rem auto', padding: '0 1rem' }}>
-      <h1>Prumo</h1>
-      <p>Controle de inventário/patrimônio para Lojas Maçônicas.</p>
-      <p>
-        Estrutura inicial do monorepo criada. Próximos passos: configurar o
-        projeto Firebase, implementar login e o CRUD de itens — ver{' '}
-        <code>PROMPT.md</code> na raiz do repositório.
-      </p>
-    </main>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route element={<ProtectedRoute />}>
+        <Route path="/" element={<HomePage />} />
+      </Route>
+    </Routes>
   )
 }
 
