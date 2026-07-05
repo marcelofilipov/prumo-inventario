@@ -1,5 +1,4 @@
 import { Route, Routes } from 'react-router-dom'
-import './App.css'
 import { AppLayout } from './routes/AppLayout'
 import { HomePage } from './routes/HomePage'
 import { ItemFormPage } from './routes/itens/ItemFormPage'

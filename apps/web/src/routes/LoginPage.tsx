@@ -2,6 +2,10 @@ import { signIn } from '@prumo/data'
 import { FirebaseError } from 'firebase/app'
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { auth } from '../lib/firebase'
 import { useAuth } from '../lib/auth-context'
 
@@ -46,37 +50,47 @@ export function LoginPage() {
   }
 
   return (
-    <main style={{ maxWidth: 360, margin: '6rem auto', padding: '0 1rem' }}>
-      <h1>Prumo</h1>
-      <p>Entrar no controle de inventário</p>
-      <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '0.75rem' }}>
-        <label>
-          E-mail
-          <input
-            type="email"
-            required
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={{ display: 'block', width: '100%' }}
-          />
-        </label>
-        <label>
-          Senha
-          <input
-            type="password"
-            required
-            autoComplete="current-password"
-            value={senha}
-            onChange={(e) => setSenha(e.target.value)}
-            style={{ display: 'block', width: '100%' }}
-          />
-        </label>
-        {erro && <p role="alert" style={{ color: 'crimson' }}>{erro}</p>}
-        <button type="submit" disabled={enviando}>
-          {enviando ? 'Entrando…' : 'Entrar'}
-        </button>
-      </form>
+    <main className="flex min-h-svh items-center justify-center bg-background px-4">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="gap-1">
+          <CardTitle className="font-heading text-2xl text-primary dark:text-primary">Prumo</CardTitle>
+          <CardDescription>Entrar no controle de inventário</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="grid gap-4">
+            <div className="grid gap-1.5">
+              <Label htmlFor="email">E-mail</Label>
+              <Input
+                id="email"
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="senha">Senha</Label>
+              <Input
+                id="senha"
+                type="password"
+                required
+                autoComplete="current-password"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+              />
+            </div>
+            {erro && (
+              <p role="alert" className="text-sm text-destructive">
+                {erro}
+              </p>
+            )}
+            <Button type="submit" disabled={enviando} className="mt-1">
+              {enviando ? 'Entrando…' : 'Entrar'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </main>
   )
 }

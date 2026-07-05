@@ -6,8 +6,8 @@ export function ProtectedRoute() {
 
   if (loading) {
     return (
-      <main style={{ maxWidth: 640, margin: '4rem auto', padding: '0 1rem' }}>
-        <p>Carregando…</p>
+      <main className="flex min-h-svh items-center justify-center bg-background">
+        <p className="text-sm text-muted-foreground">Carregando…</p>
       </main>
     )
   }

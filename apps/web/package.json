@@ -14,10 +14,18 @@
   "dependencies": {
     "@prumo/core": "workspace:*",
     "@prumo/data": "workspace:*",
+    "@tailwindcss/vite": "^4.3.2",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "firebase": "^11.1.0",
+    "lucide-react": "^1.23.0",
+    "next-themes": "^0.4.6",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-router-dom": "^7.1.1"
+    "react-router-dom": "^7.1.1",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.2",
+    "tw-animate-css": "^1.4.0"
   },
   "devDependencies": {
     "@types/node": "^24.13.2",

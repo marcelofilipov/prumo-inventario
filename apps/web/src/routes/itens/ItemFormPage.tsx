@@ -9,6 +9,12 @@ import {
 } from '@prumo/core'
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '../../lib/auth-context'
 import { lojaId } from '../../lib/firebase'
 import { inventoryRepository } from '../../lib/repositories'
@@ -122,136 +128,149 @@ export function ItemFormPage() {
 
   if (carregando) {
     return (
-      <main style={{ maxWidth: 480, margin: '2rem auto', padding: '0 1rem' }}>
-        <p>Carregando…</p>
+      <main className="mx-auto max-w-xl px-4 py-8 sm:px-6">
+        <p className="text-sm text-muted-foreground">Carregando…</p>
       </main>
     )
   }
 
   return (
-    <main style={{ maxWidth: 480, margin: '2rem auto', padding: '0 1rem' }}>
-      <h1>{emEdicao ? 'Editar item' : 'Novo item'}</h1>
+    <main className="mx-auto max-w-xl px-4 py-8 sm:px-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-heading text-xl">
+            {emEdicao ? 'Editar item' : 'Novo item'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="grid gap-4">
+            <div className="grid gap-1.5">
+              <Label htmlFor="descricao">Descrição</Label>
+              <Input
+                id="descricao"
+                required
+                value={form.descricao}
+                onChange={(e) => setForm({ ...form, descricao: e.target.value })}
+              />
+            </div>
 
-      <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '0.75rem' }}>
-        <label>
-          Descrição
-          <input
-            required
-            value={form.descricao}
-            onChange={(e) => setForm({ ...form, descricao: e.target.value })}
-            style={{ display: 'block', width: '100%' }}
-          />
-        </label>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-1.5">
+                <Label htmlFor="quantidade">Quantidade</Label>
+                <Input
+                  id="quantidade"
+                  type="number"
+                  min={1}
+                  required
+                  value={form.quantidade}
+                  onChange={(e) => setForm({ ...form, quantidade: e.target.value })}
+                />
+              </div>
 
-        <label>
-          Quantidade
-          <input
-            type="number"
-            min={1}
-            required
-            value={form.quantidade}
-            onChange={(e) => setForm({ ...form, quantidade: e.target.value })}
-            style={{ display: 'block', width: '100%' }}
-          />
-        </label>
+              <div className="grid gap-1.5">
+                <Label htmlFor="codigo">Código</Label>
+                <Input
+                  id="codigo"
+                  required
+                  value={form.codigoLegado}
+                  onChange={(e) => setForm({ ...form, codigoLegado: e.target.value })}
+                />
+              </div>
+            </div>
 
-        <label>
-          Código
-          <input
-            required
-            value={form.codigoLegado}
-            onChange={(e) => setForm({ ...form, codigoLegado: e.target.value })}
-            style={{ display: 'block', width: '100%' }}
-          />
-        </label>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-1.5">
+                <Label htmlFor="categoria">Categoria</Label>
+                <Select
+                  id="categoria"
+                  value={form.categoria}
+                  onChange={(e) => setForm({ ...form, categoria: e.target.value as Categoria })}
+                >
+                  {Object.entries(CATEGORIA_LABELS).map(([valor, rotulo]) => (
+                    <option key={valor} value={valor}>
+                      {rotulo}
+                    </option>
+                  ))}
+                </Select>
+              </div>
 
-        <label>
-          Categoria
-          <select
-            value={form.categoria}
-            onChange={(e) => setForm({ ...form, categoria: e.target.value as Categoria })}
-            style={{ display: 'block', width: '100%' }}
-          >
-            {Object.entries(CATEGORIA_LABELS).map(([valor, rotulo]) => (
-              <option key={valor} value={valor}>
-                {rotulo}
-              </option>
-            ))}
-          </select>
-        </label>
+              <div className="grid gap-1.5">
+                <Label htmlFor="status">Status</Label>
+                <Select
+                  id="status"
+                  value={form.status}
+                  onChange={(e) => setForm({ ...form, status: e.target.value as StatusItem })}
+                >
+                  {Object.entries(STATUS_LABELS).map(([valor, rotulo]) => (
+                    <option key={valor} value={valor}>
+                      {rotulo}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
 
-        <label>
-          Status
-          <select
-            value={form.status}
-            onChange={(e) => setForm({ ...form, status: e.target.value as StatusItem })}
-            style={{ display: 'block', width: '100%' }}
-          >
-            {Object.entries(STATUS_LABELS).map(([valor, rotulo]) => (
-              <option key={valor} value={valor}>
-                {rotulo}
-              </option>
-            ))}
-          </select>
-        </label>
+            <div className="grid gap-1.5">
+              <Label htmlFor="localizacao">Localização</Label>
+              <Input
+                id="localizacao"
+                value={form.localizacao}
+                onChange={(e) => setForm({ ...form, localizacao: e.target.value })}
+              />
+            </div>
 
-        <label>
-          Localização
-          <input
-            value={form.localizacao}
-            onChange={(e) => setForm({ ...form, localizacao: e.target.value })}
-            style={{ display: 'block', width: '100%' }}
-          />
-        </label>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-1.5">
+                <Label htmlFor="dataAquisicao">Data de aquisição</Label>
+                <Input
+                  id="dataAquisicao"
+                  type="date"
+                  value={form.dataAquisicao}
+                  onChange={(e) => setForm({ ...form, dataAquisicao: e.target.value })}
+                />
+              </div>
 
-        <label>
-          Data de aquisição
-          <input
-            type="date"
-            value={form.dataAquisicao}
-            onChange={(e) => setForm({ ...form, dataAquisicao: e.target.value })}
-            style={{ display: 'block', width: '100%' }}
-          />
-        </label>
+              <div className="grid gap-1.5">
+                <Label htmlFor="valorEstimado">Valor estimado (R$)</Label>
+                <Input
+                  id="valorEstimado"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={form.valorEstimado}
+                  onChange={(e) => setForm({ ...form, valorEstimado: e.target.value })}
+                />
+              </div>
+            </div>
 
-        <label>
-          Valor estimado (R$)
-          <input
-            type="number"
-            min={0}
-            step="0.01"
-            value={form.valorEstimado}
-            onChange={(e) => setForm({ ...form, valorEstimado: e.target.value })}
-            style={{ display: 'block', width: '100%' }}
-          />
-        </label>
+            <div className="grid gap-1.5">
+              <Label htmlFor="observacao">Observação</Label>
+              <Textarea
+                id="observacao"
+                value={form.observacao}
+                onChange={(e) => setForm({ ...form, observacao: e.target.value })}
+              />
+            </div>
 
-        <label>
-          Observação
-          <textarea
-            value={form.observacao}
-            onChange={(e) => setForm({ ...form, observacao: e.target.value })}
-            style={{ display: 'block', width: '100%' }}
-          />
-        </label>
+            {erros.length > 0 && (
+              <ul role="alert" className="list-disc pl-5 text-sm text-destructive">
+                {erros.map((mensagem) => (
+                  <li key={mensagem}>{mensagem}</li>
+                ))}
+              </ul>
+            )}
 
-        {erros.length > 0 && (
-          <ul role="alert" style={{ color: 'crimson' }}>
-            {erros.map((mensagem) => (
-              <li key={mensagem}>{mensagem}</li>
-            ))}
-          </ul>
-        )}
-
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button type="submit" disabled={salvando}>
-            {salvando ? 'Salvando…' : 'Salvar'}
-          </button>
-          <button type="button" onClick={() => navigate('/itens')}>
-            Cancelar
-          </button>
-        </div>
-      </form>
+            <div className="flex gap-3">
+              <Button type="submit" disabled={salvando}>
+                {salvando ? 'Salvando…' : 'Salvar'}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => navigate('/itens')}>
+                Cancelar
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </main>
   )
 }
