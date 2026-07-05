@@ -3,6 +3,8 @@
 Controle de inventário/patrimônio para Lojas Maçônicas. Piloto: **ARLS
 João Ramalho nº 107**.
 
+[![Licença: AGPL v3](https://img.shields.io/badge/Licen%C3%A7a-AGPL%20v3-blue.svg)](./LICENSE)
+
 Contexto completo, modelo de dados e guardrails do projeto estão em
 [`PROMPT.md`](./PROMPT.md).
 
@@ -100,3 +102,19 @@ node scripts/import-inventario.mjs "/caminho/para/Inventario.pdf" --commit  # gr
 Notas de arquitetura e decisões técnicas também são mantidas no Obsidian
 (`Projects/Prumo`) — ver `Architecture.md` e `Changelog.md` lá para o
 histórico detalhado de decisões.
+
+## Como contribuir
+
+Veja o [`CONTRIBUTING.md`](./CONTRIBUTING.md) para o fluxo de branches, padrões
+de código e checklist de PR. Ao participar, você concorda com o
+[Código de Conduta](./CODE_OF_CONDUCT.md). Para relatar vulnerabilidades, siga
+o [`SECURITY.md`](./SECURITY.md).
+
+## Licença
+
+Distribuído sob a licença **GNU Affero General Public License v3.0** — ver
+[`LICENSE`](./LICENSE). A AGPL-3.0 é copyleft e cobre uso em rede: se você rodar
+uma versão modificada como serviço, precisa disponibilizar o código-fonte
+correspondente aos usuários.
+
+© 2026 Marcelo Filipov.
