@@ -70,18 +70,6 @@ segurança do `PROMPT.md`. Passos:
 3. Firestore Database → criar `lojas/joao-ramalho-107/membros/{uid}` com
    campo `papel` (string) = `admin`.
 
-## Importação do inventário legado
-
-`scripts/import-inventario.mjs` importa os itens a partir de um PDF
-exportado do sistema legado (ASP.NET). Roda em modo dry-run por padrão;
-só grava com `--commit`. É idempotente (por `codigoLegado` + `descrição`)
-e infere a categoria de cada item por palavra-chave na descrição.
-
-```bash
-node scripts/import-inventario.mjs "/caminho/para/Inventario.pdf"           # dry-run
-node scripts/import-inventario.mjs "/caminho/para/Inventario.pdf" --commit  # grava de verdade
-```
-
 ## Status
 
 - [x] Estrutura do monorepo (pnpm + Turborepo)
