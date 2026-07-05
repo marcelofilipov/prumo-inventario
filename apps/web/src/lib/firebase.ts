@@ -1,6 +1,6 @@
 import { getFirebaseApp } from '@prumo/data'
 import { getAuth } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
+import { initializeFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
 
 const app = getFirebaseApp({
@@ -13,7 +13,11 @@ const app = getFirebaseApp({
 })
 
 export const auth = getAuth(app)
-export const db = getFirestore(app)
+// ignoreUndefinedProperties: campos opcionais do formulário (localização,
+// observação, data de aquisição, valor estimado) viram `undefined` quando
+// deixados em branco, e o Firestore rejeita `undefined` em escritas por
+// padrão.
+export const db = initializeFirestore(app, { ignoreUndefinedProperties: true })
 export const storage = getStorage(app)
 
 // lojaId da Loja piloto (ARLS João Ramalho nº 107). Quando o produto
