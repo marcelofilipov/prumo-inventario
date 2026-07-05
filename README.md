@@ -96,6 +96,7 @@ manualmente no console. Ver [`docs/rbac.md`](./docs/rbac.md).
 
 ## Documentação do Projeto
 
+- [`CHANGELOG.md`](./CHANGELOG.md) — histórico de mudanças (formato Keep a Changelog)
 - [`docs/rbac.md`](./docs/rbac.md) — controle de acesso (papéis, regras, gestão de usuários)
 - [`docs/paginacao-itens.md`](./docs/paginacao-itens.md) — paginação por cursor, cache e índices
 
