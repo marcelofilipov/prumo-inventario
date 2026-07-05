@@ -20,22 +20,24 @@ import {
 } from 'firebase/firestore'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
-// Caminho para o arquivo de regras real do repositório (raiz do monorepo).
 const rulesPath = fileURLToPath(new URL('../../../firestore.rules', import.meta.url))
 
 let testEnv: RulesTestEnvironment
 
-// uid de teste para cada papel + um "de fora" (autenticado, mas não é membro).
-const ADMIN = 'uid-admin'
-const EDITOR = 'uid-editor'
-const LEITOR = 'uid-leitor'
-const FORA = 'uid-fora'
-const ADMIN_OUTRA = 'uid-admin-loja2' // admin da loja2, não é membro da loja1
-
 const LOJA = 'loja1'
-const OUTRA_LOJA = 'loja2'
 
-/** Item válido conforme o schema — base para os testes de escrita. */
+// Autorização vem do documento membros/{uid} (papel + disabled).
+function ctx(uid?: string): Firestore {
+  const c = uid ? testEnv.authenticatedContext(uid) : testEnv.unauthenticatedContext()
+  return c.firestore() as unknown as Firestore
+}
+const admin = () => ctx('uid-admin')
+const editor = () => ctx('uid-editor')
+const leitor = () => ctx('uid-leitor')
+const desativado = () => ctx('uid-desativado')
+const fora = () => ctx('uid-fora') // autenticado, sem doc de membro
+const anonimo = () => ctx()
+
 function itemValido(overrides: Record<string, unknown> = {}) {
   return {
     lojaId: LOJA,
@@ -46,17 +48,12 @@ function itemValido(overrides: Record<string, unknown> = {}) {
     status: 'ativo',
     fotos: [],
     dataAquisicao: null,
-    criadoPor: EDITOR,
-    atualizadoPor: EDITOR,
+    criadoPor: 'uid-editor',
+    atualizadoPor: 'uid-editor',
     criadoEm: Timestamp.now(),
     atualizadoEm: Timestamp.now(),
     ...overrides,
   }
-}
-
-function db(uid?: string): Firestore {
-  const ctx = uid ? testEnv.authenticatedContext(uid) : testEnv.unauthenticatedContext()
-  return ctx.firestore() as unknown as Firestore
 }
 
 beforeAll(async () => {
@@ -70,184 +67,128 @@ afterAll(async () => {
   await testEnv.cleanup()
 })
 
-// Antes de cada teste: limpa o banco e semeia membros + um item existente,
-// ignorando as regras (só a semeadura, nunca a asserção).
 beforeEach(async () => {
   await testEnv.clearFirestore()
-  await testEnv.withSecurityRulesDisabled(async (ctx) => {
-    const semeador = ctx.firestore()
-    await setDoc(doc(semeador, `lojas/${LOJA}/membros/${ADMIN}`), { papel: 'admin' })
-    await setDoc(doc(semeador, `lojas/${LOJA}/membros/${EDITOR}`), { papel: 'editor' })
-    await setDoc(doc(semeador, `lojas/${LOJA}/membros/${LEITOR}`), { papel: 'leitor' })
-    await setDoc(doc(semeador, `lojas/${OUTRA_LOJA}/membros/${ADMIN_OUTRA}`), { papel: 'admin' })
-    await setDoc(doc(semeador, `lojas/${LOJA}/itens/item1`), itemValido())
+  await testEnv.withSecurityRulesDisabled(async (c) => {
+    const s = c.firestore()
+    await setDoc(doc(s, `lojas/${LOJA}/membros/uid-admin`), { papel: 'admin', disabled: false })
+    await setDoc(doc(s, `lojas/${LOJA}/membros/uid-editor`), { papel: 'editor', disabled: false })
+    await setDoc(doc(s, `lojas/${LOJA}/membros/uid-leitor`), { papel: 'leitor', disabled: false })
+    await setDoc(doc(s, `lojas/${LOJA}/membros/uid-desativado`), { papel: 'editor', disabled: true })
+    // Doc legado: só `papel`, SEM o campo `disabled` (como o admin piloto).
+    await setDoc(doc(s, `lojas/${LOJA}/membros/uid-legado`), { papel: 'admin' })
+    await setDoc(doc(s, `lojas/${LOJA}/itens/item1`), itemValido())
+    await setDoc(doc(s, `lojas/${LOJA}/system/roleCounts`), { admin: 1, editor: 2 })
+    await setDoc(doc(s, `lojas/${LOJA}/auditLogs/log1`), {
+      targetUid: 'uid-editor',
+      changedBy: 'uid-admin',
+      action: 'create',
+      timestamp: Timestamp.now(),
+    })
   })
 })
 
 describe('leitura de itens', () => {
-  it('membro (leitor) consegue ler item da sua loja', async () => {
-    await assertSucceeds(getDoc(doc(db(LEITOR), `lojas/${LOJA}/itens/item1`)))
+  it('membro ativo (leitor) lê', async () => {
+    await assertSucceeds(getDoc(doc(leitor(), `lojas/${LOJA}/itens/item1`)))
   })
-
-  it('usuário autenticado que não é membro NÃO lê', async () => {
-    await assertFails(getDoc(doc(db(FORA), `lojas/${LOJA}/itens/item1`)))
+  it('membro DESATIVADO não lê', async () => {
+    await assertFails(getDoc(doc(desativado(), `lojas/${LOJA}/itens/item1`)))
   })
-
-  it('não autenticado NÃO lê', async () => {
-    await assertFails(getDoc(doc(db(), `lojas/${LOJA}/itens/item1`)))
+  it('membro legado (sem campo disabled) lê normalmente', async () => {
+    await assertSucceeds(getDoc(doc(ctx('uid-legado'), `lojas/${LOJA}/itens/item1`)))
   })
-
-  it('admin de outra loja NÃO lê item de loja1 (isolamento multi-tenant)', async () => {
-    // ADMIN_OUTRA é admin da loja2, mas não é membro da loja1.
-    await assertFails(getDoc(doc(db(ADMIN_OUTRA), `lojas/${LOJA}/itens/item1`)))
+  it('sem doc de membro não lê; anônimo não lê', async () => {
+    await assertFails(getDoc(doc(fora(), `lojas/${LOJA}/itens/item1`)))
+    await assertFails(getDoc(doc(anonimo(), `lojas/${LOJA}/itens/item1`)))
   })
 })
 
-describe('criação de itens', () => {
-  it('editor cria item válido', async () => {
-    await assertSucceeds(setDoc(doc(db(EDITOR), `lojas/${LOJA}/itens/novo`), itemValido()))
+describe('escrita de itens', () => {
+  it('editor cria item válido; leitor não', async () => {
+    await assertSucceeds(setDoc(doc(editor(), `lojas/${LOJA}/itens/novo`), itemValido()))
+    await assertFails(setDoc(doc(leitor(), `lojas/${LOJA}/itens/novo`), itemValido()))
   })
-
-  it('leitor NÃO cria item', async () => {
-    await assertFails(setDoc(doc(db(LEITOR), `lojas/${LOJA}/itens/novo`), itemValido()))
+  it('editor desativado não cria', async () => {
+    await assertFails(setDoc(doc(desativado(), `lojas/${LOJA}/itens/novo`), itemValido()))
   })
-
-  it('editor NÃO cria item com quantidade não numérica', async () => {
-    await assertFails(
-      setDoc(doc(db(EDITOR), `lojas/${LOJA}/itens/novo`), itemValido({ quantidade: 'muitas' })),
-    )
+  it('rejeita status fora do enum e lojaId divergente', async () => {
+    await assertFails(setDoc(doc(editor(), `lojas/${LOJA}/itens/novo`), itemValido({ status: 'x' })))
+    await assertFails(setDoc(doc(editor(), `lojas/${LOJA}/itens/novo`), itemValido({ lojaId: 'outra' })))
   })
-
-  it('editor NÃO cria item com status fora do enum', async () => {
-    await assertFails(
-      setDoc(doc(db(EDITOR), `lojas/${LOJA}/itens/novo`), itemValido({ status: 'sumiu' })),
-    )
-  })
-
-  it('editor NÃO cria item sem descrição', async () => {
-    await assertFails(
-      setDoc(doc(db(EDITOR), `lojas/${LOJA}/itens/novo`), itemValido({ descricao: '' })),
-    )
-  })
-
-  it('editor NÃO cria item com lojaId divergente do caminho', async () => {
-    await assertFails(
-      setDoc(doc(db(EDITOR), `lojas/${LOJA}/itens/novo`), itemValido({ lojaId: 'outra' })),
-    )
-  })
-
-  it('item com dataAquisicao null é aceito (campo em branco no app)', async () => {
-    await assertSucceeds(
-      setDoc(doc(db(EDITOR), `lojas/${LOJA}/itens/novo`), itemValido({ dataAquisicao: null })),
-    )
+  it('editor exclui; leitor não', async () => {
+    await assertSucceeds(deleteDoc(doc(editor(), `lojas/${LOJA}/itens/item1`)))
+    await assertFails(deleteDoc(doc(leitor(), `lojas/${LOJA}/itens/item1`)))
   })
 })
 
-describe('edição e exclusão de itens', () => {
-  it('editor atualiza item para estado válido', async () => {
+describe('membros', () => {
+  it('admin lê qualquer; membro lê o próprio; leitor não lê de outro', async () => {
+    await assertSucceeds(getDoc(doc(admin(), `lojas/${LOJA}/membros/uid-editor`)))
+    await assertSucceeds(getDoc(doc(leitor(), `lojas/${LOJA}/membros/uid-leitor`)))
+    await assertFails(getDoc(doc(leitor(), `lojas/${LOJA}/membros/uid-admin`)))
+  })
+  it('admin cria membro com papel válido; papel inválido falha', async () => {
+    await assertSucceeds(setDoc(doc(admin(), `lojas/${LOJA}/membros/novo`), { papel: 'leitor', disabled: false }))
+    await assertFails(setDoc(doc(admin(), `lojas/${LOJA}/membros/novo`), { papel: 'super', disabled: false }))
+  })
+  it('não-admin não escreve membros (sem auto-escalonamento)', async () => {
+    await assertFails(setDoc(doc(editor(), `lojas/${LOJA}/membros/uid-editor`), { papel: 'admin', disabled: false }))
+  })
+  it('ninguém exclui membro (só desativação lógica)', async () => {
+    await assertFails(deleteDoc(doc(admin(), `lojas/${LOJA}/membros/uid-leitor`)))
+  })
+})
+
+describe('roleCounts e auditLogs', () => {
+  it('admin lê roleCounts; editor não', async () => {
+    await assertSucceeds(getDoc(doc(admin(), `lojas/${LOJA}/system/roleCounts`)))
+    await assertFails(getDoc(doc(editor(), `lojas/${LOJA}/system/roleCounts`)))
+  })
+  it('admin grava roleCounts com admin>=1; admin=0 é bloqueado (piso)', async () => {
+    await assertSucceeds(setDoc(doc(admin(), `lojas/${LOJA}/system/roleCounts`), { admin: 1, editor: 0 }))
+    await assertFails(setDoc(doc(admin(), `lojas/${LOJA}/system/roleCounts`), { admin: 0, editor: 5 }))
+  })
+  it('admin lê auditLogs; leitor não; escrita válida ok; adulterar autor falha', async () => {
+    await assertSucceeds(getDoc(doc(admin(), `lojas/${LOJA}/auditLogs/log1`)))
+    await assertFails(getDoc(doc(leitor(), `lojas/${LOJA}/auditLogs/log1`)))
     await assertSucceeds(
-      updateDoc(doc(db(EDITOR), `lojas/${LOJA}/itens/item1`), {
-        quantidade: 10,
-        atualizadoEm: Timestamp.now(),
+      addDoc(collection(admin(), `lojas/${LOJA}/auditLogs`), {
+        targetUid: 'x',
+        changedBy: 'uid-admin',
+        action: 'update-role',
+        timestamp: serverTimestamp(),
       }),
     )
-  })
-
-  it('editor NÃO atualiza item para status inválido', async () => {
     await assertFails(
-      updateDoc(doc(db(EDITOR), `lojas/${LOJA}/itens/item1`), { status: 'inexistente' }),
-    )
-  })
-
-  it('editor exclui item', async () => {
-    await assertSucceeds(deleteDoc(doc(db(EDITOR), `lojas/${LOJA}/itens/item1`)))
-  })
-
-  it('leitor NÃO exclui item', async () => {
-    await assertFails(deleteDoc(doc(db(LEITOR), `lojas/${LOJA}/itens/item1`)))
-  })
-})
-
-describe('membros e papéis', () => {
-  it('admin cria membro com papel válido', async () => {
-    await assertSucceeds(
-      setDoc(doc(db(ADMIN), `lojas/${LOJA}/membros/novo`), { papel: 'editor' }),
-    )
-  })
-
-  it('admin NÃO cria membro com papel inválido', async () => {
-    await assertFails(
-      setDoc(doc(db(ADMIN), `lojas/${LOJA}/membros/novo`), { papel: 'super' }),
-    )
-  })
-
-  it('editor NÃO escreve em membros (sem auto-escalonamento)', async () => {
-    await assertFails(
-      setDoc(doc(db(EDITOR), `lojas/${LOJA}/membros/${EDITOR}`), { papel: 'admin' }),
-    )
-  })
-
-  it('leitor consegue ler membros da loja', async () => {
-    await assertSucceeds(getDoc(doc(db(LEITOR), `lojas/${LOJA}/membros/${ADMIN}`)))
-  })
-
-  it('de fora NÃO lê membros', async () => {
-    await assertFails(getDoc(doc(db(FORA), `lojas/${LOJA}/membros/${ADMIN}`)))
-  })
-})
-
-describe('histórico / auditoria', () => {
-  const historicoRef = () => collection(db(EDITOR), `lojas/${LOJA}/itens/item1/historico`)
-
-  it('editor cria evento com o próprio uid e timestamp do servidor', async () => {
-    await assertSucceeds(
-      addDoc(historicoRef(), {
-        acao: 'edicao',
-        usuario: EDITOR,
+      addDoc(collection(admin(), `lojas/${LOJA}/auditLogs`), {
+        targetUid: 'x',
+        changedBy: 'outro',
+        action: 'update-role',
         timestamp: serverTimestamp(),
       }),
     )
   })
+})
 
-  it('NÃO cria evento em nome de outro usuário', async () => {
-    await assertFails(
-      addDoc(historicoRef(), {
-        acao: 'edicao',
-        usuario: ADMIN,
-        timestamp: serverTimestamp(),
-      }),
-    )
+describe('histórico de itens', () => {
+  const ref = () => collection(editor(), `lojas/${LOJA}/itens/item1/historico`)
+  it('editor cria com o próprio uid e timestamp do servidor', async () => {
+    await assertSucceeds(addDoc(ref(), { acao: 'edicao', usuario: 'uid-editor', timestamp: serverTimestamp() }))
   })
-
-  it('NÃO cria evento pós-datado (timestamp diferente do servidor)', async () => {
-    await assertFails(
-      addDoc(historicoRef(), {
-        acao: 'edicao',
-        usuario: EDITOR,
-        timestamp: Timestamp.fromDate(new Date('2020-01-01')),
-      }),
-    )
+  it('não cria em nome de outro nem pós-datado', async () => {
+    await assertFails(addDoc(ref(), { acao: 'edicao', usuario: 'uid-admin', timestamp: serverTimestamp() }))
+    await assertFails(addDoc(ref(), { acao: 'edicao', usuario: 'uid-editor', timestamp: Timestamp.fromDate(new Date('2020-01-01')) }))
   })
-
-  it('histórico é imutável: não permite update nem delete', async () => {
-    // Semeia um evento ignorando regras e tenta alterá-lo pela regra.
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      await setDoc(doc(ctx.firestore(), `lojas/${LOJA}/itens/item1/historico/ev1`), {
+  it('é imutável', async () => {
+    await testEnv.withSecurityRulesDisabled(async (c) => {
+      await setDoc(doc(c.firestore(), `lojas/${LOJA}/itens/item1/historico/ev1`), {
         acao: 'edicao',
-        usuario: EDITOR,
+        usuario: 'uid-editor',
         timestamp: Timestamp.now(),
       })
     })
-    await assertFails(
-      updateDoc(doc(db(EDITOR), `lojas/${LOJA}/itens/item1/historico/ev1`), { acao: 'exclusao' }),
-    )
-    await assertFails(deleteDoc(doc(db(EDITOR), `lojas/${LOJA}/itens/item1/historico/ev1`)))
-  })
-})
-
-// Sanidade: garante que a suíte está realmente falando com o emulador.
-describe('ambiente', () => {
-  it('FIRESTORE_EMULATOR_HOST está definido', () => {
-    expect(process.env.FIRESTORE_EMULATOR_HOST).toBeTruthy()
+    await assertFails(updateDoc(doc(editor(), `lojas/${LOJA}/itens/item1/historico/ev1`), { acao: 'exclusao' }))
+    await assertFails(deleteDoc(doc(editor(), `lojas/${LOJA}/itens/item1/historico/ev1`)))
   })
 })

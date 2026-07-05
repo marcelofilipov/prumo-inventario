@@ -1,5 +1,24 @@
 export type PapelUsuario = 'admin' | 'editor' | 'leitor'
 
+/** Contadores de papéis ativos por Loja, mantidos pelo client (em transação)
+ * para garantir o piso de administradores (backstop nas regras). */
+export interface RoleCounts {
+  admin: number
+  editor: number
+}
+
+export type AcaoAuditoria = 'create' | 'update-role' | 'disable' | 'enable'
+
+export interface RegistroAuditoria {
+  id: string
+  targetUid: string
+  changedBy: string
+  previousRole: PapelUsuario | null
+  newRole: PapelUsuario | null
+  action: AcaoAuditoria
+  timestamp: Date
+}
+
 export type StatusItem = 'ativo' | 'baixado' | 'emprestado' | 'manutencao'
 
 /**

@@ -1,10 +1,12 @@
 import { Route, Routes } from 'react-router-dom'
+import { UsuariosPage } from './routes/admin/UsuariosPage'
 import { AppLayout } from './routes/AppLayout'
 import { HomePage } from './routes/HomePage'
 import { ItemFormPage } from './routes/itens/ItemFormPage'
 import { ItensListPage } from './routes/itens/ItensListPage'
 import { LoginPage } from './routes/LoginPage'
 import { ProtectedRoute } from './routes/ProtectedRoute'
+import { RequirePapel } from './routes/RequirePapel'
 
 function App() {
   return (
@@ -16,6 +18,9 @@ function App() {
           <Route path="/itens" element={<ItensListPage />} />
           <Route path="/itens/novo" element={<ItemFormPage />} />
           <Route path="/itens/:id/editar" element={<ItemFormPage />} />
+          <Route element={<RequirePapel permitido={['admin']} />}>
+            <Route path="/admin/usuarios" element={<UsuariosPage />} />
+          </Route>
         </Route>
       </Route>
     </Routes>
