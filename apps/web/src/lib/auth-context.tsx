@@ -1,8 +1,9 @@
 import type { Membro, PapelUsuario } from '@prumo/core'
-import { FirestoreMembroRepository, observeAuthState } from '@prumo/data'
+import { observeAuthState } from '@prumo/data'
 import type { User } from 'firebase/auth'
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { auth, db, lojaId } from './firebase'
+import { createContext, useContext, useEffect, useState } from 'react'
+import { auth, lojaId } from './firebase'
+import { membroRepository } from './repositories'
 
 interface AuthState {
   loading: boolean
@@ -22,8 +23,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user: null,
     papel: null,
   })
-
-  const membroRepository = useMemo(() => new FirestoreMembroRepository(db), [])
 
   useEffect(() => {
     const unsubscribe = observeAuthState(auth, async (user) => {
@@ -46,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
 
     return unsubscribe
-  }, [membroRepository])
+  }, [])
 
   return <AuthContext.Provider value={state}>{children}</AuthContext.Provider>
 }

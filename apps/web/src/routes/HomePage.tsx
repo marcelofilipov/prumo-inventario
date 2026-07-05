@@ -1,34 +1,19 @@
-import { signOutUser } from '@prumo/data'
-import { auth } from '../lib/firebase'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/auth-context'
 
 export function HomePage() {
-  const { user, papel } = useAuth()
+  const { user } = useAuth()
 
   return (
     <main style={{ maxWidth: 640, margin: '4rem auto', padding: '0 1rem' }}>
       <h1>Prumo</h1>
       <p>
-        Logado como <strong>{user?.email}</strong>
-        {papel ? ` (${papel})` : ''}
+        Bem-vindo(a), <strong>{user?.email}</strong>.
       </p>
-
-      {!papel && (
-        <p style={{ color: '#b45309' }}>
-          Seu login funcionou, mas você ainda não tem um papel atribuído
-          nesta Loja. Peça a um administrador para cadastrar seu usuário em{' '}
-          <code>lojas/{'{lojaId}'}/membros/{user?.uid}</code> no Firestore.
-        </p>
-      )}
-
       <p>
-        Controle de inventário/patrimônio. CRUD de itens ainda não
-        implementado — ver <code>PROMPT.md</code> na raiz do repositório.
+        Controle de inventário/patrimônio da Loja. Comece pela{' '}
+        <Link to="/itens">lista de itens</Link>.
       </p>
-
-      <button type="button" onClick={() => signOutUser(auth)}>
-        Sair
-      </button>
     </main>
   )
 }
