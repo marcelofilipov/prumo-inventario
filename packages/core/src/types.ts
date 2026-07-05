@@ -58,3 +58,36 @@ export interface FiltroItens {
   adquiridoDe?: Date
   adquiridoAte?: Date
 }
+
+declare const cursorItensBrand: unique symbol
+
+/**
+ * Cursor opaco de paginação. Cada plataforma guarda por baixo o seu próprio
+ * tipo de "ponteiro" para o último documento da página (no web é um
+ * `QueryDocumentSnapshot` do Firebase JS SDK; no mobile será o equivalente
+ * do @react-native-firebase). O consumidor NUNCA inspeciona este valor —
+ * apenas o repassa para buscar a próxima página. Manter opaco é o que
+ * permite a interface de repositório continuar independente de plataforma.
+ */
+export type CursorItens = { readonly [cursorItensBrand]: true }
+
+export interface ParametrosPaginaItens {
+  /** Quantos itens a página deve conter. */
+  pageSize: number
+  /**
+   * Cursor da página anterior. `null`/ausente busca a primeira página.
+   * Deve ser exatamente o `cursor` devolvido em `PaginaItens`.
+   */
+  cursor?: CursorItens | null
+}
+
+export interface PaginaItens {
+  itens: ItemInventario[]
+  /** Cursor para a próxima página; `null` quando não há próxima página. */
+  cursor: CursorItens | null
+  /**
+   * `true` quando existe pelo menos mais uma página. Derivado buscando
+   * `pageSize + 1` documentos — sem custo de um `count()` adicional.
+   */
+  hasMore: boolean
+}

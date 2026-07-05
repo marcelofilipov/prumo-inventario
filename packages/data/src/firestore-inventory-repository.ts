@@ -1,11 +1,17 @@
 import type {
+  CursorItens,
   FiltroItens,
   InventoryRepository,
   ItemInventario,
   NovoItemInventario,
+  PaginaItens,
+  ParametrosPaginaItens,
 } from '@prumo/core'
+import { aplicarFiltroItens } from '@prumo/core'
 import {
   type Firestore,
+  type QueryConstraint,
+  type QueryDocumentSnapshot,
   Timestamp,
   addDoc,
   collection,
@@ -13,7 +19,10 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
+  orderBy,
   query,
+  startAfter,
   updateDoc,
   where,
 } from 'firebase/firestore'
@@ -71,27 +80,47 @@ export class FirestoreInventoryRepository implements InventoryRepository {
 
     // Filtros de texto livre (descrição/observação) são aplicados em
     // memória por ora — considerar Algolia/Typesense se a base crescer.
-    return itens.filter((item) => {
-      if (
-        filtro?.descricao &&
-        !item.descricao.toLowerCase().includes(filtro.descricao.toLowerCase())
-      ) {
-        return false
-      }
-      if (
-        filtro?.observacao &&
-        !item.observacao?.toLowerCase().includes(filtro.observacao.toLowerCase())
-      ) {
-        return false
-      }
-      if (filtro?.adquiridoDe && (!item.dataAquisicao || item.dataAquisicao < filtro.adquiridoDe)) {
-        return false
-      }
-      if (filtro?.adquiridoAte && (!item.dataAquisicao || item.dataAquisicao > filtro.adquiridoAte)) {
-        return false
-      }
-      return true
-    })
+    return aplicarFiltroItens(itens, filtro)
+  }
+
+  /**
+   * Paginação por cursor: `orderBy(descricao)` + `startAfter(cursor)` +
+   * `limit(pageSize + 1)`. Buscar um item a mais detecta `hasMore` sem um
+   * `count()` extra. Passar o `QueryDocumentSnapshot` inteiro para
+   * `startAfter` garante desempate estável por `__name__` mesmo quando há
+   * descrições repetidas.
+   *
+   * Não aplica filtros no servidor — o refino é feito no cliente sobre as
+   * páginas carregadas (ver `aplicarFiltroItens`). Por isso a query só
+   * precisa do índice de campo único de `descricao` (automático); nenhum
+   * índice composto é necessário nesta versão.
+   */
+  async listItemsPage(
+    lojaId: string,
+    params: ParametrosPaginaItens,
+  ): Promise<PaginaItens> {
+    const { pageSize, cursor } = params
+    const ref = collection(this.db, itensCollectionPath(lojaId))
+
+    const constraints: QueryConstraint[] = [orderBy('descricao')]
+    if (cursor) {
+      constraints.push(startAfter(cursor as unknown as QueryDocumentSnapshot))
+    }
+    constraints.push(limit(pageSize + 1))
+
+    const snapshot = await getDocs(query(ref, ...constraints))
+    const docs = snapshot.docs
+    const hasMore = docs.length > pageSize
+    // slice sobre os pageSize+1 docs JÁ paginados por cursor — não sobre a
+    // coleção inteira. É a técnica de detecção de próxima página, não offset.
+    const visiveis = hasMore ? docs.slice(0, pageSize) : docs
+
+    const itens = visiveis.map((d) => toItemInventario(d.id, lojaId, d.data()))
+    const ultimo = visiveis[visiveis.length - 1]
+    const proximoCursor =
+      hasMore && ultimo ? (ultimo as unknown as CursorItens) : null
+
+    return { itens, cursor: proximoCursor, hasMore }
   }
 
   async getItem(lojaId: string, itemId: string): Promise<ItemInventario | null> {
