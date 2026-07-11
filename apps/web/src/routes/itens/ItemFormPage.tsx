@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '../../lib/auth-context'
 import { lojaId } from '../../lib/firebase'
 import { inventoryRepository } from '../../lib/repositories'
+import { useAtualizarItem, useCriarItem } from '../../lib/use-itens-mutations'
 
 interface CamposForm {
   descricao: string
@@ -54,10 +55,14 @@ export function ItemFormPage() {
   const navigate = useNavigate()
   const { user, papel } = useAuth()
 
+  const criar = useCriarItem()
+  const atualizar = useAtualizarItem()
+
   const [form, setForm] = useState<CamposForm>(formVazio)
   const [carregando, setCarregando] = useState(emEdicao)
-  const [salvando, setSalvando] = useState(false)
   const [erros, setErros] = useState<string[]>([])
+
+  const salvando = criar.isPending || atualizar.isPending
 
   useEffect(() => {
     if (!id) return
@@ -111,18 +116,15 @@ export function ItemFormPage() {
       return
     }
 
-    setSalvando(true)
     try {
       if (emEdicao && id) {
-        await inventoryRepository.updateItem(lojaId, id, validado.data)
+        await atualizar.mutateAsync({ id, patch: validado.data })
       } else {
-        await inventoryRepository.createItem(validado.data)
+        await criar.mutateAsync(validado.data)
       }
       navigate('/itens')
     } catch {
       setErros(['Não foi possível salvar o item. Tente novamente.'])
-    } finally {
-      setSalvando(false)
     }
   }
 

@@ -1,0 +1,70 @@
+# @prumo/security-rules
+
+Testes automatizados das regras de segurança do Firestore
+(`firestore.rules`), rodando contra o **Firebase Emulator Suite**.
+
+## O que é o Emulator Suite (rápido)
+
+O Emulator Suite é uma versão local dos serviços do Firebase (Firestore,
+Auth, Storage...) que roda na sua máquina, **sem tocar em produção e sem
+custo**. Para testar regras, ele sobe um Firestore local, carrega o
+`firestore.rules` e responde às operações exatamente como o Firestore real
+responderia — permitindo ou negando conforme a regra.
+
+Os testes usam a biblioteca oficial `@firebase/rules-unit-testing`, que:
+
+- Cria "contextos" de usuário — autenticado com um `uid` (o papel vem do
+  documento `membros/{uid}` semeado no cenário) ou anônimo.
+- Oferece `assertSucceeds(promise)` e `assertFails(promise)` para afirmar que
+  uma operação foi **permitida** ou **negada** pelas regras.
+- Permite semear dados **ignorando as regras** (`withSecurityRulesDisabled`),
+  usado só para preparar o cenário — nunca para a asserção em si.
+
+Cada teste segue o padrão: _dado um usuário com tal papel, quando ele tenta
+tal operação, então ela deve suceder/falhar_.
+
+## Como rodar
+
+Pré-requisitos: **Java 21+** (o emulador do Firestore roda em JVM e o
+Firebase CLI 15+ exige JDK 21 ou superior) e o **Firebase CLI**
+(`firebase-tools`), além do `pnpm install` já feito.
+
+> Garanta que tanto o `java` no PATH quanto o `JAVA_HOME` apontem para um
+> JDK 21+. Se você tem várias versões instaladas, defina no seu shell (ex.:
+> `~/.zshrc`):
+>
+> ```bash
+> export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+> ```
+>
+> Um `JAVA_HOME` apontando para um JDK antigo pode fazer o emulador falhar
+> com `Java version before 21`, mesmo que o `java` do PATH seja o 21.
+
+Na raiz do monorepo:
+
+```bash
+pnpm test:rules
+```
+
+Esse comando usa `firebase emulators:exec`, que **sobe o emulador do
+Firestore, roda os testes (Vitest) e derruba o emulador ao final** — tudo em
+um passo. Usa o projeto fictício `demo-prumo` (o prefixo `demo-` diz ao
+emulador que é offline, sem precisar de credenciais).
+
+Para desenvolver as regras com re-execução automática, deixe o emulador
+aberto em um terminal (`firebase emulators:start --only firestore`) e rode
+`pnpm --filter @prumo/security-rules test:rules:watch` em outro.
+
+## Cobertura atual
+
+- **Autorização por documento** `membros/{uid}` (papel + `disabled`).
+- Leitura de itens: membro ativo sim; desativado, sem doc e anônimo não.
+- Escrita de itens: papel (editor/admin) + validação de forma (tipos, enum de
+  `status`/`categoria`, `lojaId` consistente, `dataAquisicao` null aceito).
+- Membros: leitura só para o próprio usuário ou admin; escrita só por admin
+  (papel validado); sem exclusão (desativação lógica).
+- `system/roleCounts`: leitura/escrita só admin, com piso `admin >= 1`.
+- `auditLogs`: leitura só admin; criação com autor = usuário autenticado;
+  imutável.
+- Histórico de itens: autor = usuário autenticado, timestamp do servidor,
+  imutável após criado.

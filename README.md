@@ -3,6 +3,8 @@
 Controle de inventário/patrimônio para Lojas Maçônicas. Piloto: **ARLS
 João Ramalho nº 107**.
 
+[![Licença: AGPL v3](https://img.shields.io/badge/Licen%C3%A7a-AGPL%20v3-blue.svg)](./LICENSE)
+
 Contexto completo, modelo de dados e guardrails do projeto estão em
 [`PROMPT.md`](./PROMPT.md).
 
@@ -68,35 +70,52 @@ segurança do `PROMPT.md`. Passos:
 3. Firestore Database → criar `lojas/joao-ramalho-107/membros/{uid}` com
    campo `papel` (string) = `admin`.
 
-## Importação do inventário legado
-
-`scripts/import-inventario.mjs` importa os itens a partir de um PDF
-exportado do sistema legado (ASP.NET). Roda em modo dry-run por padrão;
-só grava com `--commit`. É idempotente (por `codigoLegado` + `descrição`)
-e infere a categoria de cada item por palavra-chave na descrição.
-
-```bash
-node scripts/import-inventario.mjs "/caminho/para/Inventario.pdf"           # dry-run
-node scripts/import-inventario.mjs "/caminho/para/Inventario.pdf" --commit  # grava de verdade
-```
+A partir do primeiro admin, os demais usuários são gerenciados **pela própria
+tela _Usuários_ do app** (criar, trocar papel, desativar/reativar) — não mais
+manualmente no console. Ver [`docs/rbac.md`](./docs/rbac.md).
 
 ## Status
 
 - [x] Estrutura do monorepo (pnpm + Turborepo)
 - [x] Projeto Firebase criado (Firestore + Auth); Storage ainda não habilitado (sem fotos no v1)
-- [x] `firestore.rules` deny-by-default, multi-tenant por `lojaId`, papéis admin/editor/leitor
+- [x] `firestore.rules` deny-by-default, multi-tenant por `lojaId`, papéis admin/editor/leitor, com validação de forma dos itens
+- [x] Testes das regras de segurança no Firebase Emulator Suite (`pnpm test:rules`)
 - [x] Autenticação (login e-mail/senha) + rota protegida
 - [x] CRUD de itens do inventário (listar com filtros, criar, editar, excluir)
+- [x] Paginação por cursor + cache (TanStack Query) na listagem — ver [`docs/paginacao-itens.md`](./docs/paginacao-itens.md)
+- [x] RBAC com gestão de usuários no app (tela Usuários: criar, trocar papel, desativar) — ver [`docs/rbac.md`](./docs/rbac.md)
 - [x] Design system (Tailwind v4 + dark/light mode), baseado no walletix-backoffice
 - [x] Importação dos 579 itens do inventário legado (578 importados; 1 sem código original, cadastro manual pendente)
 - [x] Reclassificação de categoria de todos os itens (não só os importados por palavra-chave)
+- [x] Open source: licença AGPL-3.0 + arquivos de comunidade
 - [ ] Habilitar Storage + upload de fotos por item
-- [ ] Log de auditoria (histórico de alterações por item)
+- [ ] Log de auditoria por item (histórico de alterações de cada item)
+- [ ] Busca textual server-side (Algolia/Typesense) — [issue #2](https://github.com/marcelofilipov/prumo-inventario/issues/2)
 - [ ] Deploy do `apps/web` (Firebase Hosting)
 - [ ] App mobile (React Native) — reaproveitando `@prumo/core`
 
 ## Documentação do Projeto
 
+- [`CHANGELOG.md`](./CHANGELOG.md) — histórico de mudanças (formato Keep a Changelog)
+- [`docs/rbac.md`](./docs/rbac.md) — controle de acesso (papéis, regras, gestão de usuários)
+- [`docs/paginacao-itens.md`](./docs/paginacao-itens.md) — paginação por cursor, cache e índices
+
 Notas de arquitetura e decisões técnicas também são mantidas no Obsidian
 (`Projects/Prumo`) — ver `Architecture.md` e `Changelog.md` lá para o
 histórico detalhado de decisões.
+
+## Como contribuir
+
+Veja o [`CONTRIBUTING.md`](./CONTRIBUTING.md) para o fluxo de branches, padrões
+de código e checklist de PR. Ao participar, você concorda com o
+[Código de Conduta](./CODE_OF_CONDUCT.md). Para relatar vulnerabilidades, siga
+o [`SECURITY.md`](./SECURITY.md).
+
+## Licença
+
+Distribuído sob a licença **GNU Affero General Public License v3.0** — ver
+[`LICENSE`](./LICENSE). A AGPL-3.0 é copyleft e cobre uso em rede: se você rodar
+uma versão modificada como serviço, precisa disponibilizar o código-fonte
+correspondente aos usuários.
+
+© 2026 Marcelo Filipov.

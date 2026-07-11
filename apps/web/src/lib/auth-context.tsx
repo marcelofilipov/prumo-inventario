@@ -1,9 +1,9 @@
-import type { Membro, PapelUsuario } from '@prumo/core'
+import type { PapelUsuario } from '@prumo/core'
 import { observeAuthState } from '@prumo/data'
 import type { User } from 'firebase/auth'
+import { doc, onSnapshot } from 'firebase/firestore'
 import { createContext, useContext, useEffect, useState } from 'react'
-import { auth, lojaId } from './firebase'
-import { membroRepository } from './repositories'
+import { auth, db, lojaId } from './firebase'
 
 interface AuthState {
   loading: boolean
@@ -25,26 +25,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   })
 
   useEffect(() => {
-    const unsubscribe = observeAuthState(auth, async (user) => {
+    let unsubMembro: (() => void) | null = null
+
+    const unsubAuth = observeAuthState(auth, (user) => {
+      unsubMembro?.()
+      unsubMembro = null
+
       if (!user) {
         setState({ loading: false, user: null, papel: null })
         return
       }
 
-      let membro: Membro | null = null
-      try {
-        membro = await membroRepository.getMembro(lojaId, user.uid)
-      } catch {
-        // Sem documento em lojas/{lojaId}/membros/{uid} (ou sem permissão
-        // de leitura) -> tratamos como usuário autenticado mas sem papel
-        // atribuído na Loja ainda.
-        membro = null
-      }
-
-      setState({ loading: false, user, papel: membro?.papel ?? null })
+      // O papel vem do documento lojas/{lojaId}/membros/{uid}. Escutar o doc
+      // faz a UI reagir ao vivo se um admin mudar o papel ou desativar o
+      // usuário — sem depender de refresh de token. Membro desativado (ou sem
+      // doc) fica sem papel.
+      unsubMembro = onSnapshot(
+        doc(db, `lojas/${lojaId}/membros/${user.uid}`),
+        (snap) => {
+          const dados = snap.exists() ? snap.data() : null
+          const papel = dados && dados.disabled !== true ? (dados.papel as PapelUsuario) : null
+          setState({ loading: false, user, papel })
+        },
+        () => setState({ loading: false, user, papel: null }),
+      )
     })
 
-    return unsubscribe
+    return () => {
+      unsubMembro?.()
+      unsubAuth()
+    }
   }, [])
 
   return <AuthContext.Provider value={state}>{children}</AuthContext.Provider>
