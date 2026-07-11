@@ -36,6 +36,8 @@ e o projeto adota o [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 - Documentação técnica em `docs/` (`rbac.md`, `paginacao-itens.md`).
 - Licenciamento **open source** sob AGPL-3.0 e arquivos de comunidade
   (`CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`).
+- Deploy do `apps/web` no **Firebase Hosting**, em produção em
+  <https://prumo-inventario.web.app>.
 
 ### Alterado
 
@@ -49,6 +51,9 @@ e o projeto adota o [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 - Regras de segurança negando o acesso quando o documento de membro é legado e
   não tem o campo `disabled` — tratado com `.get('disabled', false)`, com teste
   de regressão.
+- `site` do Firebase Hosting apontava para `prumo-joao-ramalho-107`
+  (inexistente no projeto), fazendo `firebase deploy --only hosting` falhar com
+  `could not find site`; corrigido para `prumo-inventario`.
 
 ### Removido
 
