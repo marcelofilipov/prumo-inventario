@@ -91,7 +91,7 @@ manualmente no console. Ver [`docs/rbac.md`](./docs/rbac.md).
 - [ ] Habilitar Storage + upload de fotos por item
 - [ ] Log de auditoria por item (histórico de alterações de cada item)
 - [ ] Busca textual server-side (Algolia/Typesense) — [issue #2](https://github.com/marcelofilipov/prumo-inventario/issues/2)
-- [ ] Deploy do `apps/web` (Firebase Hosting)
+- [x] Deploy do `apps/web` (Firebase Hosting) — <https://prumo-inventario.web.app>
 - [ ] App mobile (React Native) — reaproveitando `@prumo/core`
 
 ## Documentação do Projeto
