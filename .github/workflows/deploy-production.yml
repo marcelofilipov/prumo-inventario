@@ -45,7 +45,10 @@ jobs:
         env:
           SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PRUMO_INVENTARIO }}
 
-      - name: Deploy (Hosting + regras Firestore/Storage)
-        run: npx -y firebase-tools deploy --only hosting,firestore,storage --project prumo-inventario --non-interactive
+      # `storage` fica de fora enquanto o Firebase Storage não é habilitado no
+      # projeto (sem bucket, o deploy falha com 403 em defaultBucket.get).
+      # Readicionar `storage` ao habilitar o Storage (item do backlog).
+      - name: Deploy (Hosting + regras Firestore)
+        run: npx -y firebase-tools deploy --only hosting,firestore --project prumo-inventario --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-sa.json
