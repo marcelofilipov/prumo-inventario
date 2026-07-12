@@ -45,10 +45,14 @@ jobs:
         env:
           SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PRUMO_INVENTARIO }}
 
-      # `storage` fica de fora enquanto o Firebase Storage não é habilitado no
-      # projeto (sem bucket, o deploy falha com 403 em defaultBucket.get).
-      # Readicionar `storage` ao habilitar o Storage (item do backlog).
-      - name: Deploy (Hosting + regras Firestore)
-        run: npx -y firebase-tools deploy --only hosting,firestore --project prumo-inventario --non-interactive
+      # Deploy só do Hosting. A service account do CI (criada pelo
+      # `firebase init hosting:github`) tem permissão só de Hosting; publicar
+      # regras do Firestore/Storage exige papéis IAM extras (Firebase Rules
+      # Admin + Cloud Datastore Index Admin) ainda não concedidos. Enquanto
+      # isso, as regras seguem em deploy manual (`firebase deploy --only
+      # firestore`). Ao conceder os papéis, incluir `,firestore` (e `,storage`
+      # quando o Storage for habilitado).
+      - name: Deploy (Hosting)
+        run: npx -y firebase-tools deploy --only hosting --project prumo-inventario --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-sa.json
