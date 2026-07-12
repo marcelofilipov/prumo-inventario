@@ -92,7 +92,26 @@ manualmente no console. Ver [`docs/rbac.md`](./docs/rbac.md).
 - [ ] Log de auditoria por item (histórico de alterações de cada item)
 - [ ] Busca textual server-side (Algolia/Typesense) — [issue #2](https://github.com/marcelofilipov/prumo-inventario/issues/2)
 - [x] Deploy do `apps/web` (Firebase Hosting) — <https://prumo-inventario.web.app>
+- [x] CI/CD (GitHub Actions): deploy do Hosting em push para `main` + preview channel por PR
 - [ ] App mobile (React Native) — reaproveitando `@prumo/core`
+
+## CI/CD
+
+Pipelines em [`.github/workflows/`](./.github/workflows) (GitHub Actions):
+
+- **`deploy-production.yml`** — a cada `push` em `main` (ex.: ao mergear
+  `develop → main`), builda o `apps/web` e roda `firebase deploy --only hosting`,
+  publicando em <https://prumo-inventario.web.app>. Autentica via service account
+  (secret `FIREBASE_SERVICE_ACCOUNT_PRUMO_INVENTARIO`); a config web (`VITE_*`) é
+  injetada no build a partir de secrets do repositório.
+- **`preview-pr.yml`** — a cada PR, publica um preview channel do Hosting e
+  comenta a URL temporária no PR.
+
+> As **regras do Firestore continuam em deploy manual** (`firebase deploy --only
+> firestore`): a service account do CI só tem permissão de Hosting. Para
+> automatizá-las, conceda-lhe os papéis **Firebase Rules Admin** e **Cloud
+> Datastore Index Admin** no IAM e reinclua `,firestore` no workflow (`,storage`
+> quando o Storage for habilitado).
 
 ## Documentação do Projeto
 
