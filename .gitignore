@@ -12,3 +12,11 @@ firebase-debug.log
 firebase-debug.*.log
 .vscode/*
 !.vscode/extensions.json
+
+# Ferramentas locais do Claude Code / skills (não versionadas)
+.claude/
+.agents/
+skills-lock.json
+
+# Stub gerado pelo `firebase init` — o Hosting serve apps/web/dist, não public/
+public/
