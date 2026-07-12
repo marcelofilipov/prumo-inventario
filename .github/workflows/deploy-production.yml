@@ -1,0 +1,52 @@
+# Deploy de produção no Firebase.
+# Dispara quando `main` é atualizada (ex.: ao mergear develop -> main) e publica
+# o app web (apps/web/dist) + as regras do Firestore/Storage. `main` = produção.
+name: Deploy de produção (Firebase)
+
+on:
+  push:
+    branches: [main]
+
+# Serializa deploys sobre produção; não cancela um deploy em andamento.
+concurrency:
+  group: firebase-producao
+  cancel-in-progress: false
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Instala dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Build do app web
+        run: pnpm --filter @prumo/web build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_LOJA_ID: ${{ secrets.VITE_LOJA_ID }}
+
+      - name: Grava credencial da service account
+        run: printf '%s' "$SA_KEY" > "$RUNNER_TEMP/gcp-sa.json"
+        env:
+          SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PRUMO_INVENTARIO }}
+
+      - name: Deploy (Hosting + regras Firestore/Storage)
+        run: npx -y firebase-tools deploy --only hosting,firestore,storage --project prumo-inventario --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-sa.json
