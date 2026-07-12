@@ -38,6 +38,11 @@ e o projeto adota o [Versionamento Semântico](https://semver.org/lang/pt-BR/).
   (`CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`).
 - Deploy do `apps/web` no **Firebase Hosting**, em produção em
   <https://prumo-inventario.web.app>.
+- **CI/CD com GitHub Actions** (`.github/workflows/`): `deploy-production.yml`
+  publica o Hosting a cada `push` em `main` (build pnpm + `firebase deploy`,
+  autenticado por service account) e `preview-pr.yml` cria um preview channel a
+  cada PR. Deploy limitado a Hosting por enquanto — as regras do Firestore
+  seguem em deploy manual (a service account do CI não tem permissão de regras).
 
 ### Alterado
 
